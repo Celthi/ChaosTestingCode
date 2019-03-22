@@ -1,0 +1,162 @@
+Hi, based on my understand, there are many libraries could do the contract testing and why pact stands out? I think I can use newman(postman's command line) to automate the requests and verify the response like the pact does.
+
+Matt [8:53 AM]
+sure, but that’s not contract testing
+that’s just API/HTTP testing
+
+Evan Lu [8:53 AM]
+What's the difference between contract testing and API testing. I read this link By read this link https://docs.pact.io/best_practices/consumer/contract_tests_not_functional_tests
+I think the contract testing mention in the link just a loose API testing. contract just test fewer cases
+
+Matt [8:54 AM]
+Contract tests checks both sides of the API contract - the consumer and the provider. It ensures that _both_ sides of the contract are in sync, preventing drift (edited) 
+It’s easy to have a swagger defined for a provider API, and even check that the provider is compatible with it (if that’s what yyou do). It’s harder to be sure, that the consumer implements the contract correctly
+Contract testing let’s you test each side of this _independently_ - meaning you don’t need to have both services running to ensure they are compatible. This enables much simpler continuous delivery
+Without contract testing, you can’t be sure, and therefore have to start up all the services together and test them at the same time to make sure they’re compatible. This is slow, problematic, fragile and cumbersome
+
+Evan Lu [8:58 AM]
+Firstly thank you for your kind help and detailed answer!! :slightly_smiling_face: My further question is for the corps that one team owns the consumer and the other team owns the provider.
+The provider team cannot wait the consumer team to provide the pact.
+
+Matt [8:59 AM]
+you’re welcome
+
+Evan Lu [9:00 AM]
+because in most of the case, the provider will be developed first. And in the provider developing time, the provider team needs to test their service.
+
+Matt [9:00 AM]
+Sure, and they should absolutely test their service through whatever means makes sense. The contract can be generated later by the consumer when they’re ready, at which point the provider can verify it.
+All of the functional testing of the provider still needs to be done, it just should be done by the provider team (not the consumer team, via e2e tests).
+for that, whatever tool gets the job done is fine (edited) 
+so newman can definitely be used with Pact
+newman = functional test,  pact = contract  test (edited) 
+functional test = the API does what it says it does
+contract test =  the parties that use the API are always in sync with how the API should be used (edited) 
+bbl sorry, in meeting (edited) 
+
+Evan Lu [9:05 AM]
+Please be proud that you can answer questions from new comers like me :slightly_smiling_face:.
+These days I have tried with do a API-test with my new provider with the pact-js. Your answers clear most of the doubts I met during the process. Thank you very much!
+
+Evan Lu [9:13 AM]
+So contract testing is an extra insurance for the software. If the consumer and provider teams develop separately, provider team will still need the verify the provider by API-testing. And the consumer team will provide the contract pact while writing the consumer and later give the pact to the provider to verify the provider. In the future, the provider could use the pact to verify its new change and the consumer could verify itself by the pact. Is my understanding correct? Last but not least, deeply thank you for you answer!
+
+Beth [9:14 AM]
+Yes, this is correct.
+
+Evan Lu [9:14 AM]
+Thank you, Beth!
+
+Boris [11:19 AM]
+@Evan Lu Another thing you can do (from the provider side, while waiting for consumers to exist) is write your own test consumer. It doesn't have the full value of a real consumer, but it can exercise your CI/CD testing infrastructure :slightly_smiling_face:
+
+Evan Lu [7:21 AM]
+Create a thread (edited) 
+
+Matt [7:23 AM]
+I think by “infrastructure” in this context, Boris means “your CI/CD scripting process”. Not testing actual server/cloud infrastructure.
+i.e. it prepares you for when the ecosystem grows to multiple consumers and providers
+
+Evan Lu [7:25 AM]
+It seems this a over-thinking idea. Too many purposes on  one framework seems bring too much complexity
+and with a fake consumer, you have too pacts to obey. one is the real, one is the one you are  testing
+
+Matt [7:28 AM]
+I’m not sure what you mean? Pact is not a CI/CD tool, but is designed fit _within_ them.
+as for the fake consumer, you would delete it as soon as a real one comes on board
+
+Evan Lu [7:29 AM]
+I mean other libraries/framework also designed fit within them
+Yeah. Deleting the fake would be the solution.
+
+Matt [7:30 AM]
+it just prepares you for when a consumer is ready, rather than you having to setup the process to fetch and verify consumer pacts, integrate the “can-i-deploy” tool  etc. only after a consumer comes on board.
+
+Evan Lu [7:32 AM]
+I just struggle with why I need to write unit test, api test and contract test. If the API test cover the change, how can the provider break the contracts set by API test. An example about why the pact/contract test rescue would be very appreciated
+When we do API test, we actually set up contracts between consumer and provider. If the adding change in the provider pass the API test, how can he breaks the contract set up by the API test?
+
+Matt [7:40 AM]
+> how can the provider break the contracts set by API test
+
+Because the provider is free to change the contract, and then validate that the (new) contract is satisfied by its own testing
+
+> When we do API test, we actually set up contracts between consumer and provider
+
+How do you do this now?
+
+> If the adding change in the provider pass the API test, how can he breaks the contract set up by the API test?
+
+don’t also forget that the _consumer_ is a key part of this, and they may inadvertently get out of sync also
+
+> I just struggle with why I need to write unit test, api test and contract test
+
+Even if you assumed that you had the right level of coverage, traditional e2e testing that ensures they _do_ work together, is slow, fragile, hard to maintain and hard to debug.
+
+Contract tests let you test each component in isolation, whilst guaranteeing that they are still compatible
+
+Boris [7:42 AM]
+Basically, contract testing like this is further towards the bottom of the testing pyramid, rather than e2e and functional tests that:
+- have many moving parts,
+- are slower to run, and
+- are inherently more flaky
+so you can focus on faster feedback, and smaller tests :ok_hand:
+Contract testing like this also decouples the consumer and provider. This helps you debug quicker, because you find out which side broke the contract at the start of the test failure, instead of through your own investigation :slightly_smiling_face:
+Then you can decide which version of the contract is correct (new or old)
+
+Evan Lu [7:45 AM]
+@Matt thank you very much!  As for "How do you do this now", when we do API test, we definitely assume that provider gives certain responses. And the consumer will work with these responses. Later when I change provider, if I pass the API-test, it means that the consumer could work as before because the certain responses still exists
+
+Boris [7:45 AM]
+Because of that, you can also ensure that you only deploy backwards-compatible contract changes
+
+Evan Lu [7:47 AM]
+Could you give an example that with API-test, there is something will be broke?
+
+Evan Lu [7:51 AM]
+I have read DIUS/pact-workshop-js 's example. In the step 3 or 4 says that Pact.io to rescue. But I see that the consumer will fail because it does not follow the API that the provider gives instead consumer test the API response based on its imagination.
+
+Boris [8:00 AM]
+You need to make a philosophy shift for Pact to give you a benefit. Have you read anything about consumer-driven vs provider-driven APIs?
+e.g. https://docs.pact.io/#consumer-driven-contracts
+A large part of the value of making the API design consumer-driven is that you usually don't know what your consumers need, or how they want to interact with any API you're building.
+Oftentimes, you'll have many different consumers, with slightly different needs and use cases.
+e.g. They won't all use all of the API endpoints.
+You can write smaller test suites for each consumer, and granularly find out if API changes will break individual consumers.
+Then you can talk to those teams and find out why they want to use the API in that way, and either accommodate them, or get them to accommodate your API design.
+Pact doesn't replace having conversations between teams, but it can help you have better conversations with the right people :slightly_smiling_face:
+
+Evan Lu [8:11 AM]
+I get it that it can avoid a lot of communication and negotiation between teams
+
+Boris [8:11 AM]
+nono, it's meant to facilitate communication & shared understanding
+(but higher quality comms)
+
+Evan Lu [8:15 AM]
+Thank you @Boris I'll try to figure out left parts with my coding experience grows
+
+Boris [8:18 AM]
+There are some good talks and blog posts about it, so let us know if you get stuck again :slightly_smiling_face:
+
+Matt [8:18 AM]
+I’d recommend the Atlassian talk, they have nice animations and talk about how they use it with swagger
+
+YOU54F [8:21 AM]
+^ this. that talk is brilliant.
+
+It definitely a philosophical shift into the world of CDC, it should be called collaboration driven contract testing however.
+
+I see it as a provider now has a view as to how the consumer is using their service, and exactly what they use, rather than just a load of requests.
+
+Provider can put out a new release without breaking all their clients.
+
+Without CDC, providers have no view until they put out a release and get broken consumers on the phone, or you have painful integration testing phases where everyone needs to line up at the same time.
+
+Evan Lu [8:22 AM]
+Thank you all. I google them and read them. If I still get question, I'll will bother you again.
+
+YOU54F [8:22 AM]
+https://www.youtube.com/watch?v=-6x6XBDf9sQ
+YouTubeAtlassian
+Verifying Microservice Integrations with Contract Testing - Atlassian Summit 2016
